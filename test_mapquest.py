@@ -1,15 +1,15 @@
 from json import JSONDecodeError
-import urllib.parse
-import requests
+from urllib.parse import urlencode 
+from requests import get
 
-def test_location(origin, destination):
+def test_location(origin=None, destination=None):
     main_api = "https://www.mapquestapi.com/directions/v2/route?"
     key = "YgdNCMGADzfWaERY5bk0e3bxEZcCRJzu"
 
-    url = main_api + urllib.parse.urlencode({"key":key, "from":origin, "to":destination})
+    url = main_api + urlencode({"key":key, "from":origin, "to":destination})
 
     try :
-        json_data = requests.get(url).json()
+        json_data = get(url).json()
     except JSONDecodeError :
         print("\nUnexpected Error happened: Key maybe invalid")
     
