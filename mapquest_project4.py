@@ -1,112 +1,135 @@
-from json import JSONDecodeError
-import urllib.parse
+from tkinter import *
+import urllib
+import urllib.request
 import requests
 import webbrowser
 import time
-import pwinput
-from colorama import init, Fore
 
-#Initialize Colorama
-init(autoreset=True)
+class MapQuest:
+    def __init__(self):
+        window = Tk()
+        window.resizable(0,0)
+        window.title("Destination Route Details using MapQuest")
+        window.geometry("600x700")
+        window.configure(background = "white")
 
-main_api = "https://www.mapquestapi.com/directions/v2/route?"
+        #frame for the labels and entry box
+        frame1 = Frame(window)
+        frame1.pack()
 
-#Mask Key with '*'
-key = pwinput.pwinput(prompt='Enter your key: ', mask = '*')
+        #frame for the buttons
+        frame3 = Frame(window)
+        frame3.pack()
 
-#Global variable for choices
-try_again = ""
-unit_choice = ""
+        #frame for the output
+        frame4 = Frame(window)
+        frame4.pack()
+        
+        #label for the starting location
+        Label(frame1, text = "Starting Location: ", bg = "white").grid(row = 1, column = 1, sticky = W)
 
-while True:
-    #Input Starting location
-    orig = input(Fore.GREEN + "Starting Location: ")
-    if orig.lower() == "quit" or orig.lower() == "q":
-        break
+        self.startingLocation = StringVar()
+        Entry(frame1, textvariable = self.startingLocation, justify = LEFT, width = 70).grid(row = 1, column = 2, sticky = W)
 
-    #Input Destination location
-    dest = input(Fore.GREEN + "Destination: ")
-    if dest.lower() == "quit" or dest.lower() == "q":
-        break
+        #label for the destination location
+        Label(frame1, text = "Destination Location: ", bg = "white").grid(row = 2, column = 1, sticky = W)
 
-    #Select Unit of Measruement
-    while True:
-        unit_choice = input(Fore.GREEN + "Select unit of measurement [km/mi]: ")
-        if (unit_choice.lower() == "km"):
-            break
-        elif (unit_choice.lower() == "mi"):
-            break
-        else:
-            print(Fore.RED + "\nPlease enter a valid unit of measurement.\n")
+        #entry box for the destination location
+        self.destinationLocation = StringVar()
+        Entry(frame1, textvariable = self.destinationLocation, justify = LEFT, width = 70).grid(row = 2, column = 2, sticky = W)
 
-    #URL 
-    url = main_api + urllib.parse.urlencode({"key":key, "from":orig, "to":dest})
-    print(Fore.YELLOW + "\nURL: " + (url) + "\n")
+        #label for the output
+        Label(frame4, text = "Route Details: ", bg = "white").grid(row = 1, column = 1, sticky = W)
 
-    try :
+        #button to display the route
+        Button(frame3, text = "Display Route Details", bg ="sky blue", padx = 5, command = self.displayRouteDetails).grid(row = 1, column = 1, sticky = W, padx = 5)
+
+        #button to clear the entry boxes
+        Button(frame3, text = "Clear", bg ="indian red", command = self.clear).grid(row = 1, column = 2, sticky = W, padx = 5)
+
+        #text box for the output
+        self.output = Text(frame4, width = 70, height = 35, wrap = WORD, background = "light gray")
+        self.output.grid(row = 2, column = 1, sticky = W)
+
+        window.mainloop()
+
+    def displayRouteDetails(self):
+        #get the starting location and destination location from the entry boxes
+        startingLocation = self.startingLocation.get()
+        destinationLocation = self.destinationLocation.get()
+
+        main_api = "https://www.mapquestapi.com/directions/v2/route?" #API for MapQuest
+        key = "YgdNCMGADzfWaERY5bk0e3bxEZcCRJzu" #Personal Consumer Key
+        #YgdNCMGADzfWaERY5bk0e3bxEZcCRJzu
+
+        #url to get the route details
+        url = main_api + urllib.parse.urlencode({"key":key, "from":startingLocation, "to":destinationLocation})
+
         json_data = requests.get(url).json()
-    except JSONDecodeError :
-        print("\nUnexpected Error happened: Key maybe invalid")
-        key = pwinput.pwinput(prompt='Enter your key: ', mask = '*')
-        continue
+        json_status = json_data["info"]["statuscode"] #Checks if the route exists
+
+        if json_status == 0: #Route exists
+            #display the route information
+            self.output.delete(0.0, END)
+            self.output.config(fg = "black")
+            self.output.insert(END, "Distance Away: ")
+            self.output.insert(END, str("{:.2f}".format((json_data["route"]["distance"])*1.61) + " km/"))
+            self.output.insert(END, str("{:.2f}".format((json_data["route"]["distance"])) + " mi") + "\n\n")
+            self.output.insert(END, "Travel Time: " + (json_data["route"]["formattedTime"]) + "\n")
+            self.output.insert(END, "Starting Address: " + startingLocation + "\n")
+            self.output.insert(END, "Destination Address: " + destinationLocation + "\n")
+            
+            # not working anymore
+            # self.output.insert(END, "Fuel Used: " + str("{:.2f}".format((json_data["route"]["fuelUsed"])*3.78) + "\n\n"))
+
+            #display the directions
+            self.output.insert(END, "Directions:\n")
+            for maneuver in json_data["route"]["legs"][0]["maneuvers"]:
+                directions = maneuver["narrative"]
+                self.output.insert(END, directions + "\n")
+
+            #copy text to clipboard
+            self.output.clipboard_clear()
+            self.output.clipboard_append(self.output.get(1.0, END))
+            self.output.insert(END, "\nRoute Directions copied to clipboard\n")
+
+            #open in browser
+            self.output.insert(END, "\nURL: " + url) 
+            self.output.insert(END, "\n\nURL opening in browser...")
+            webbrowser.open(url)
+            
+        #error code 402
+        elif json_status == 402:
+            self.output.delete(0.0, END)
+            self.output.config(fg = "red")
+            self.output.insert(END, "Status Code: " + str(json_status) + ". Invalid user inputs for one or both locations.\n")
         
-    json_status = json_data["info"]["statuscode"]
-
-    if json_status == 0:
-        #Route Call Success
-        print(Fore.GREEN + "API Status: " + str(json_status) + " = A successful route call.\n")
-
-        #Display information regarding Direction, Trip Duration, km/mi, Fuel used
-        print(Fore.BLUE + "="*100)
-        print(Fore.BLUE + "Directions from " + (orig) + " to " + (dest))
-        print(Fore.BLUE + "Trip Duration: " + (json_data["route"]["formattedTime"]))
+        #error code 611
+        elif json_status == 611:
+            self.output.delete(0.0, END)
+            self.output.config(fg = "red")
+            self.output.insert(END, "Status Code: " + str(json_status) + ". Missing an entry for one or both locations.\n")
         
-        if (unit_choice.lower() == "km"):
-            print(Fore.BLUE + "Kilometers: " + str("{:.2f}".format((json_data["route"]["distance"])*1.61)))
-        elif (unit_choice.lower() == "mi"):
-            print(Fore.BLUE + "Miles: " + str("{:.2f}".format(json_data["route"]["distance"])))
-
-        print(Fore.BLUE + "Fuel Used (Ltr): " + str("{:.2f}".format((json_data["route"]["fuelUsed"])*3.78)))
-        print(Fore.BLUE + "="*100 + "\n") 
-
-        #Display detailed direction information
-        print(Fore.MAGENTA + "=" * 100) 
-        for each in json_data["route"]["legs"][0]["maneuvers"]:
-            print(Fore.MAGENTA + (each["narrative"])+ " (" + str("{:.2f}".format((each["distance"])*1.61) + " km)"))
-
-        print(Fore.MAGENTA + "=" * 100 + "\n") 
-
-        #Opens URL after 2 seconds
-        print(Fore.YELLOW + "URL opening in browser after 2 seconds...\n")
-        time.sleep(2)
-        webbrowser.open(url)
-
-    elif json_status == 402:
-        print(Fore.RED + "*" * 100)
-        print(Fore.RED + "Status Code: " + str(json_status) + ". Invalid user inputs for one or both locations.")
-        print(Fore.RED + "*" * 100 + "\n")
-
-    elif json_status == 611:
-        print(Fore.RED + "*" * 100)
-        print(Fore.RED +"Status Code: " + str(json_status) + ". Missing an entry for one or both locations.")
-        print(Fore.RED +"*" * 100 + "\n")
-
-    else:
-        print(Fore.RED + "*" * 100)
-        print(Fore.RED +"For Status Code: " + str(json_status) + ". Refer to: ")
-        url_refer = "https://developer.mapquest.com/documentation/directions-api/status-codes"
-        print(Fore.YELLOW + url_refer)
-        print(Fore.RED + "*" * 100 + "\n")
+        #other error codes
+        else:
+            self.output.delete(0.0, END)
+            self.output.config(fg = "red")
+            url_refer = "https://developer.mapquest.com/documentation/directions-api/status-codes"
+            self.output.insert(END, "For Status Code: " + str(json_status) + ". Refer to: " + url_refer +"\n")
+            self.output.insert(END, "Status Code Documentation opening in browser after 2 seconds...")
+            time.sleep(2)
+            webbrowser.open(url_refer)
         
-        #Opens Status Code URL after 2 seconds
-        print(Fore.YELLOW + "Status Code Documentation opening in browser after 2 seconds...")
-        time.sleep(2)
-        webbrowser.open(url_refer)
-    
-    #Validation if user wants to try again
-    try_again = input(Fore.GREEN + 'Input another location? (Y/N): ')
-    print("")
-    if (try_again.lower() == 'yes' or try_again.lower() == 'y'):
-        continue
-    else:
-        break
+    def clear(self):
+        #clear the entry boxes
+        self.startingLocation.set("")
+        self.destinationLocation.set("")
+
+        #clear the output
+        self.output.delete(0.0, END)
+
+#run application  
+MapQuest()
+
+
+
