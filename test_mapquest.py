@@ -13,6 +13,7 @@ def test_location(origin=None, destination=None) -> Dict:
         json_data = get(url).json()
     except JSONDecodeError :
         print("\nUnexpected Error happened: Key maybe invalid")
+        return 1
     
     json_status = json_data["info"]["statuscode"]
     return json_status
