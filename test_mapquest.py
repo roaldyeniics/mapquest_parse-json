@@ -1,8 +1,9 @@
 from json import JSONDecodeError
 from urllib.parse import urlencode 
+from typing import Dict
 from requests import get
 
-def test_location(origin=None, destination=None):
+def test_location(origin=None, destination=None) -> Dict:
     main_api = "https://www.mapquestapi.com/directions/v2/route?"
     key = "YgdNCMGADzfWaERY5bk0e3bxEZcCRJzu"
 
