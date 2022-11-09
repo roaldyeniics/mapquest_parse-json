@@ -1,3 +1,3 @@
 from json import JSONDecodeError
-import urllib.parse
-import requests
+from urllib.parse import urlencode 
+from requests import get
